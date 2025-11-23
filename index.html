@@ -32,71 +32,40 @@
     <script type="text/babel">
         // --- CONFIGURATION LOGIC ---
         let firebaseConfig;
-        let isConfigured = false;
-
+        
         // 1. Try to use the Preview Environment keys (so it works here in the chat)
         if (typeof __firebase_config !== 'undefined') {
             firebaseConfig = JSON.parse(__firebase_config);
-            isConfigured = true;
         } else {
-            // 2. Fallback to manual keys for Local Use
-            // YOU MUST REPLACE THESE VALUES WHEN RUNNING ON YOUR COMPUTER
+            // 2. YOUR MANUAL KEYS
             firebaseConfig = {
-                apiKey: "PASTE_API_KEY_HERE",
-                authDomain: "PASTE_AUTH_DOMAIN_HERE",
-                projectId: "PASTE_PROJECT_ID_HERE",
-                storageBucket: "PASTE_STORAGE_BUCKET_HERE",
-                messagingSenderId: "PASTE_SENDER_ID_HERE",
-                appId: "PASTE_APP_ID_HERE"
+                apiKey: "AIzaSyC7Ct5hYhSVRHc3-o3RBbaWxHu4xByfHe0",
+                authDomain: "dopamine-menu-c0340.firebaseapp.com",
+                projectId: "dopamine-menu-c0340",
+                storageBucket: "dopamine-menu-c0340.firebasestorage.app",
+                messagingSenderId: "184986050340",
+                appId: "1:184986050340:web:d3a9c4e187dd87c5a41db1",
+                measurementId: "G-M6Y6EY56CM"
             };
-            
-            // Check if user has actually replaced the keys
-            if (firebaseConfig.apiKey !== "PASTE_API_KEY_HERE") {
-                isConfigured = true;
-            }
         }
 
-        // Only initialize if configured, otherwise we show the setup screen
-        if (isConfigured) {
-            try {
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
-            } catch (e) {
-                console.error("Firebase Init Error:", e);
-                isConfigured = false; // Fallback to error screen if init fails
+        // Initialize Firebase
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
             }
+        } catch (e) {
+            console.error("Firebase Init Error:", e);
         }
 
-        const auth = isConfigured ? firebase.auth() : null;
-        const db = isConfigured ? firebase.firestore() : null;
+        const auth = firebase.auth();
+        const db = firebase.firestore();
         // Use environment app ID if available, otherwise default
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'dopamine-menu-lite';
 
         const { useState, useEffect } = React;
 
-        // --- SETUP INSTRUCTION SCREEN ---
-        const SetupScreen = () => (
-            <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100">
-                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-lg w-full">
-                    <h1 className="text-2xl font-bold text-red-600 mb-4">⚠️ Configuration Needed</h1>
-                    <p className="mb-4 text-gray-700">The app is running, but it doesn't have your database keys yet.</p>
-                    <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <li>Open this <code>index.html</code> file in a text editor (like Notepad or VS Code).</li>
-                        <li>Scroll down to the <code>firebaseConfig</code> section.</li>
-                        <li>Replace <code>PASTE_API_KEY_HERE</code> (and others) with your actual keys from the Firebase Console.</li>
-                        <li>Save and refresh this page.</li>
-                    </ol>
-                    <div className="mt-6 text-center">
-                        <a href="https://console.firebase.google.com" target="_blank" className="text-indigo-600 hover:underline">Go to Firebase Console &rarr;</a>
-                    </div>
-                </div>
-            </div>
-        );
-
         const DopamineMenu = () => {
-            if (!isConfigured) return <SetupScreen />;
-
             const defaultMenu = {
                 appetizers: [
                     { id: 1, text: 'Drink a glass of water', icon: '💧' },
