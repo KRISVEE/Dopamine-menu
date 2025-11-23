@@ -38,15 +38,13 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         
-        // Ensure persistence is set to LOCAL (keeps user logged in even after browser close)
         auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(error => {
             console.error("Persistence Error:", error);
         });
 
-        // Enable offline persistence for database
         try {
             db.enablePersistence().catch(err => {
-                console.log("DB Persistence suppressed (likely multiple tabs open)");
+                console.log("DB Persistence suppressed");
             });
         } catch(e) { console.log("Persistence init skipped"); }
 
@@ -54,7 +52,49 @@
 
         const { useState, useEffect } = React;
 
-        // --- LOGIN SCREEN COMPONENT ---
+        // --- COMPONENTS ---
+
+        const EmojiPicker = ({ isOpen, onClose, onSelect }) => {
+            if (!isOpen) return null;
+            
+            const commonEmojis = ['✨', '🔥', '💪', '🧠', '💧', '🎵', '🐕', '🐈', '💤', '📚', '💻', '🧹', '🎮', '🍕', '🍫', '🛀', '🧘', '🚴', '🎨', '📝', '✅', '❤️', '🌟', '💡'];
+            const [customEmoji, setCustomEmoji] = useState('');
+
+            return (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+                    <div className="bg-white p-6 rounded-3xl shadow-xl max-w-xs w-full animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-slate-800">Pick an Icon</h3>
+                            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
+                        </div>
+                        
+                        <div className="grid grid-cols-6 gap-2 mb-6">
+                            {commonEmojis.map(emoji => (
+                                <button 
+                                    key={emoji} 
+                                    onClick={() => onSelect(emoji)}
+                                    className="text-2xl p-2 hover:bg-slate-100 rounded-xl transition-colors flex items-center justify-center"
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
+                        </div>
+
+                        <form onSubmit={(e) => { e.preventDefault(); if(customEmoji) onSelect(customEmoji); }} className="flex gap-2">
+                            <input 
+                                className="flex-1 border border-slate-200 rounded-xl px-4 py-2 text-center text-xl focus:ring-2 focus:ring-indigo-500 outline-none w-full"
+                                placeholder="Type..."
+                                value={customEmoji}
+                                onChange={e => setCustomEmoji(e.target.value)}
+                                maxLength={2} 
+                            />
+                            <button type="submit" className="bg-slate-900 text-white px-4 rounded-xl font-bold hover:bg-slate-700">Save</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
         const LoginScreen = ({ onLogin }) => (
             <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
                 <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center border border-slate-100">
@@ -74,7 +114,6 @@
             </div>
         );
 
-        // --- LOADING SCREEN ---
         const LoadingScreen = () => (
              <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
                 <div className="animate-spin-custom text-4xl mb-4">🧠</div>
@@ -105,19 +144,23 @@
             };
 
             const [user, setUser] = useState(null);
-            const [isAuthChecking, setIsAuthChecking] = useState(true); // NEW: Track if we are checking auth
+            const [isAuthChecking, setIsAuthChecking] = useState(true);
             const [menu, setMenu] = useState(defaultMenu);
             const [activeCategory, setActiveCategory] = useState('appetizers');
             const [randomPick, setRandomPick] = useState(null);
             const [isSpinning, setIsSpinning] = useState(false);
             const [newItem, setNewItem] = useState('');
             const [status, setStatus] = useState('loading');
+            
+            // Emoji Picker State
+            const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+            const [editingItem, setEditingItem] = useState(null);
 
-            // 1. Auth Listener (FIXED: Added Loading State)
+            // 1. Auth Listener
             useEffect(() => {
                 const unsubscribe = auth.onAuthStateChanged((currentUser) => {
                     setUser(currentUser);
-                    setIsAuthChecking(false); // We are done checking!
+                    setIsAuthChecking(false);
                     if (!currentUser) setStatus('login_needed');
                 });
                 return () => unsubscribe();
@@ -126,9 +169,7 @@
             // 2. Data Sync
             useEffect(() => {
                 if (!user) return;
-
                 const docRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('menu');
-                
                 setStatus('syncing');
                 const unsubscribe = docRef.onSnapshot((docSnap) => {
                     if (docSnap.exists) {
@@ -148,7 +189,6 @@
             // 3. Save Function
             const saveMenu = async (newMenu) => {
                 if (!user) return;
-                
                 setStatus('syncing');
                 try {
                     const docRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('menu');
@@ -196,6 +236,22 @@
                 }, 100);
             };
 
+            // Emoji Picker Handlers
+            const handleOpenEmojiPicker = (item) => {
+                setEditingItem(item);
+                setIsEmojiPickerOpen(true);
+            };
+
+            const handleEmojiSelect = (newEmoji) => {
+                if (!editingItem) return;
+                const updatedList = menu[activeCategory].map(item => 
+                    item.id === editingItem.id ? { ...item, icon: newEmoji } : item
+                );
+                saveMenu({ ...menu, [activeCategory]: updatedList });
+                setIsEmojiPickerOpen(false);
+                setEditingItem(null);
+            };
+
             const categories = {
                 appetizers: { title: 'Appetizers', color: 'bg-amber-100 text-amber-800 border-amber-300', icon: '⚡' },
                 entrees: { title: 'Entrées', color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: '🍽️' },
@@ -203,15 +259,9 @@
                 desserts: { title: 'Desserts', color: 'bg-rose-100 text-rose-800 border-rose-300', icon: '🍰' },
             };
 
-            // RENDER LOGIC UPDATED
-            
-            // 1. If we are still checking if the user is logged in, show spinner
             if (isAuthChecking) return <LoadingScreen />;
-
-            // 2. If check is done and NO user, show Login
             if (!user) return <LoginScreen onLogin={login} />;
 
-            // 3. If check is done and YES user, show App
             return (
                 <div className="min-h-screen pb-20">
                     {/* Header */}
@@ -226,7 +276,7 @@
                     </div>
 
                     <div className="max-w-2xl mx-auto p-4">
-                        {/* Welcome Message */}
+                        {/* Welcome */}
                         <div className="mb-6">
                             <h2 className="text-2xl font-bold text-slate-800">Hi, {user.displayName ? user.displayName.split(' ')[0] : 'Brain'}! 👋</h2>
                             <p className="text-slate-500">What does your brain need right now?</p>
@@ -255,7 +305,7 @@
                                 </button>
                             </div>
 
-                            {/* Result Area */}
+                            {/* Result */}
                             {randomPick && (
                                 <div className="bg-indigo-600 text-white p-8 text-center animate-in fade-in zoom-in duration-300">
                                     <div className="text-5xl mb-3">{randomPick.icon}</div>
@@ -271,11 +321,15 @@
                                     menu[activeCategory].map((item) => (
                                         <div key={item.id} className="flex justify-between items-center p-4 hover:bg-slate-50 transition-colors group">
                                             <div className="flex gap-4 items-center">
-                                                <span className="text-xl bg-white p-2 rounded-lg shadow-sm border border-slate-100">{item.icon}</span>
+                                                <button 
+                                                    onClick={() => handleOpenEmojiPicker(item)}
+                                                    className="text-xl bg-white p-2 rounded-lg shadow-sm border border-slate-100 hover:bg-indigo-50 hover:border-indigo-200 transition-colors active:scale-95"
+                                                    title="Change Icon"
+                                                >
+                                                    {item.icon}
+                                                </button>
                                                 <span className="font-medium text-slate-700">{item.text}</span>
                                             </div>
-                                            
-                                            {/* Delete Button */}
                                             <button 
                                                 onClick={() => handleDelete(item.id)} 
                                                 className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-3 text-slate-300 hover:text-red-500 active:text-red-600 transition-all"
@@ -300,6 +354,12 @@
                             </form>
                         </div>
                     </div>
+
+                    <EmojiPicker 
+                        isOpen={isEmojiPickerOpen} 
+                        onClose={() => setIsEmojiPickerOpen(false)} 
+                        onSelect={handleEmojiSelect} 
+                    />
                 </div>
             );
         };
