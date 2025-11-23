@@ -37,14 +37,11 @@
         }
         const auth = firebase.auth();
         const db = firebase.firestore();
-        // Enable offline persistence to help with flaky connections
+        
+        // Enable offline persistence
         try {
             db.enablePersistence().catch(err => {
-                if (err.code == 'failed-precondition') {
-                    console.log('Persistence failed: Multiple tabs open');
-                } else if (err.code == 'unimplemented') {
-                    console.log('Persistence not supported by browser');
-                }
+                console.log("Persistence suppressed (likely multiple tabs open)");
             });
         } catch(e) { console.log("Persistence init skipped"); }
 
@@ -111,20 +108,18 @@
                 return () => unsubscribe();
             }, []);
 
-            // 2. Data Sync (STABILIZED)
+            // 2. Data Sync
             useEffect(() => {
                 if (!user) return;
 
                 const docRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('menu');
                 
                 setStatus('syncing');
-                // We use onSnapshot to drive the UI. This handles the "local cache" update instantly.
                 const unsubscribe = docRef.onSnapshot((docSnap) => {
                     if (docSnap.exists) {
                         setMenu(docSnap.data().items);
                         setStatus('saved');
                     } else {
-                        // Create default for new user
                         docRef.set({ items: defaultMenu, createdAt: new Date() });
                         setStatus('saved');
                     }
@@ -133,18 +128,16 @@
                     setStatus('error');
                 });
                 return () => unsubscribe();
-            }, [user?.uid]); // Only restart if the UID changes, not just the user object reference
+            }, [user?.uid]); 
 
-            // 3. Save Function (FIXED: No manual setMenu)
+            // 3. Save Function
             const saveMenu = async (newMenu) => {
-                // REMOVED: setMenu(newMenu); -> We now let the listener update the screen to prevent conflicts
                 if (!user) return;
                 
                 setStatus('syncing');
                 try {
                     const docRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('menu');
                     await docRef.set({ items: newMenu, updatedAt: new Date() }, { merge: true });
-                    // No need to setStatus('saved') here, the listener will do it when it confirms the write
                 } catch (e) {
                     setStatus('error');
                     alert("Could not save: " + e.message);
@@ -167,7 +160,6 @@
                 e.preventDefault();
                 if (!newItem.trim()) return;
                 const item = { id: Date.now(), text: newItem, icon: '✨' };
-                // We construct the new menu and send it to DB. The listener will update the UI instantly.
                 saveMenu({ ...menu, [activeCategory]: [...menu[activeCategory], item] });
                 setNewItem('');
             };
@@ -196,7 +188,6 @@
                 desserts: { title: 'Desserts', color: 'bg-rose-100 text-rose-800 border-rose-300', icon: '🍰' },
             };
 
-            // If not logged in, show Login Screen
             if (!user) return <LoginScreen onLogin={login} />;
 
             return (
@@ -261,7 +252,15 @@
                                                 <span className="text-xl bg-white p-2 rounded-lg shadow-sm border border-slate-100">{item.icon}</span>
                                                 <span className="font-medium text-slate-700">{item.text}</span>
                                             </div>
-                                            <button onClick={() => handleDelete(item.id)} className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-red-500 transition-all">🗑️</button>
+                                            
+                                            {/* UPDATED DELETE BUTTON: Always visible on mobile, Hover only on Desktop */}
+                                            <button 
+                                                onClick={() => handleDelete(item.id)} 
+                                                className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-3 text-slate-300 hover:text-red-500 active:text-red-600 transition-all"
+                                                title="Delete Item"
+                                            >
+                                                🗑️
+                                            </button>
                                         </div>
                                     ))
                                 )}
