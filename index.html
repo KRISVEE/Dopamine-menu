@@ -38,10 +38,15 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         
-        // Enable offline persistence
+        // Ensure persistence is set to LOCAL (keeps user logged in even after browser close)
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(error => {
+            console.error("Persistence Error:", error);
+        });
+
+        // Enable offline persistence for database
         try {
             db.enablePersistence().catch(err => {
-                console.log("Persistence suppressed (likely multiple tabs open)");
+                console.log("DB Persistence suppressed (likely multiple tabs open)");
             });
         } catch(e) { console.log("Persistence init skipped"); }
 
@@ -69,6 +74,14 @@
             </div>
         );
 
+        // --- LOADING SCREEN ---
+        const LoadingScreen = () => (
+             <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+                <div className="animate-spin-custom text-4xl mb-4">🧠</div>
+                <p className="text-slate-400 text-sm font-medium">Waking up your brain...</p>
+             </div>
+        );
+
         const DopamineMenu = () => {
             const defaultMenu = {
                 appetizers: [
@@ -92,6 +105,7 @@
             };
 
             const [user, setUser] = useState(null);
+            const [isAuthChecking, setIsAuthChecking] = useState(true); // NEW: Track if we are checking auth
             const [menu, setMenu] = useState(defaultMenu);
             const [activeCategory, setActiveCategory] = useState('appetizers');
             const [randomPick, setRandomPick] = useState(null);
@@ -99,10 +113,11 @@
             const [newItem, setNewItem] = useState('');
             const [status, setStatus] = useState('loading');
 
-            // 1. Auth Listener
+            // 1. Auth Listener (FIXED: Added Loading State)
             useEffect(() => {
                 const unsubscribe = auth.onAuthStateChanged((currentUser) => {
                     setUser(currentUser);
+                    setIsAuthChecking(false); // We are done checking!
                     if (!currentUser) setStatus('login_needed');
                 });
                 return () => unsubscribe();
@@ -188,8 +203,15 @@
                 desserts: { title: 'Desserts', color: 'bg-rose-100 text-rose-800 border-rose-300', icon: '🍰' },
             };
 
+            // RENDER LOGIC UPDATED
+            
+            // 1. If we are still checking if the user is logged in, show spinner
+            if (isAuthChecking) return <LoadingScreen />;
+
+            // 2. If check is done and NO user, show Login
             if (!user) return <LoginScreen onLogin={login} />;
 
+            // 3. If check is done and YES user, show App
             return (
                 <div className="min-h-screen pb-20">
                     {/* Header */}
@@ -253,7 +275,7 @@
                                                 <span className="font-medium text-slate-700">{item.text}</span>
                                             </div>
                                             
-                                            {/* UPDATED DELETE BUTTON: Always visible on mobile, Hover only on Desktop */}
+                                            {/* Delete Button */}
                                             <button 
                                                 onClick={() => handleDelete(item.id)} 
                                                 className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-3 text-slate-300 hover:text-red-500 active:text-red-600 transition-all"
