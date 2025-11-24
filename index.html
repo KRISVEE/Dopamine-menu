@@ -57,10 +57,8 @@
 
         const { useState, useEffect, useRef } = React;
 
-        // --- AUDIO ENGINE (Robust) ---
-        // We create the context lazily to handle browser autoplay policies
+        // --- AUDIO ENGINE ---
         let audioCtx = null;
-
         const initAudio = () => {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -93,8 +91,8 @@
             } else if (type === 'win') {
                 osc.type = 'triangle';
                 osc.frequency.setValueAtTime(440, now);
-                osc.frequency.setValueAtTime(554, now + 0.1); // C#
-                osc.frequency.setValueAtTime(659, now + 0.2); // E
+                osc.frequency.setValueAtTime(554, now + 0.1); 
+                osc.frequency.setValueAtTime(659, now + 0.2); 
                 gain.gain.setValueAtTime(0.1, now);
                 gain.gain.linearRampToValueAtTime(0.1, now + 0.3);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
@@ -139,8 +137,41 @@
             );
         };
 
+        // NEW: Help Modal Component
+        const HelpModal = ({ onClose }) => (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-xl max-w-sm w-full animate-in zoom-in-95 duration-200 relative" onClick={e => e.stopPropagation()}>
+                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
+                    <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-white flex items-center gap-2">❓ How to use</h2>
+                    <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+                        <p><span className="font-bold text-amber-600 dark:text-amber-400">⚡ Appetizers:</span> Quick 5-10 min tasks to get started.</p>
+                        <p><span className="font-bold text-emerald-600 dark:text-emerald-400">🍽️ Entrées:</span> Deep focus work (30m+).</p>
+                        <p><span className="font-bold text-sky-600 dark:text-sky-400">🥗 Sides:</span> Boring chores made fun (add music!).</p>
+                        <p><span className="font-bold text-rose-600 dark:text-rose-400">🍰 Desserts:</span> Rewards & treats. Use sparingly!</p>
+                        <hr className="border-slate-100 dark:border-slate-700 my-2"/>
+                        <p>💡 <span className="font-bold">Tip:</span> Tap the time badge (e.g. "15m") to edit task duration.</p>
+                    </div>
+                </div>
+            </div>
+        );
+
+        // NEW: About Modal Component
+        const AboutModal = ({ onClose }) => (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+                <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-xl max-w-xs w-full animate-in zoom-in-95 duration-200 relative text-center" onClick={e => e.stopPropagation()}>
+                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
+                    <div className="text-5xl mb-4">🧠</div>
+                    <h2 className="text-xl font-bold mb-1 text-slate-800 dark:text-white">Dopamine Menu</h2>
+                    <p className="text-xs text-slate-400 mb-6 uppercase tracking-wider">Version 1.0</p>
+                    
+                    <div className="bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800">
+                        <p className="text-indigo-900 dark:text-indigo-200 font-bold text-sm">Powered by Xampire</p>
+                    </div>
+                </div>
+            </div>
+        );
+
         const FocusTimer = ({ durationMinutes, onClose }) => {
-            // Safe parse duration, default to 15 if parse fails
             const initialMinutes = parseInt(durationMinutes) || 15;
             const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
             const [isActive, setIsActive] = useState(false);
@@ -151,7 +182,7 @@
                     interval = setInterval(() => setTimeLeft(t => t - 1), 1000);
                 } else if (timeLeft === 0) {
                     setIsActive(false);
-                    playSound('win'); // Timer done sound
+                    playSound('win'); 
                 }
                 return () => clearInterval(interval);
             }, [isActive, timeLeft]);
@@ -219,7 +250,7 @@
             const [randomPick, setRandomPick] = useState(null);
             const [isSpinning, setIsSpinning] = useState(false);
             const [newItem, setNewItem] = useState('');
-            const [newDuration, setNewDuration] = useState('15m'); // New State for Duration
+            const [newDuration, setNewDuration] = useState('15m');
             const [status, setStatus] = useState('loading');
             
             // Feature State
@@ -227,8 +258,12 @@
             const [editingItem, setEditingItem] = useState(null);
             const [showTimer, setShowTimer] = useState(false);
             const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('dopamine_dark_mode') === 'true');
+            
+            // NEW: Profile Menu States
+            const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+            const [showHelp, setShowHelp] = useState(false);
+            const [showAbout, setShowAbout] = useState(false);
 
-            // 1. ONE-TIME AUDIO UNLOCK
             useEffect(() => {
                 const unlockAudio = () => {
                     initAudio();
@@ -243,7 +278,6 @@
                 }
             }, []);
 
-            // Dark Mode Effect
             useEffect(() => {
                 if (isDarkMode) {
                     document.documentElement.classList.add('dark');
@@ -257,7 +291,6 @@
                 localStorage.setItem('dopamine_dark_mode', isDarkMode);
             }, [isDarkMode]);
 
-            // Auth Listener
             useEffect(() => {
                 const unsubscribe = auth.onAuthStateChanged((currentUser) => {
                     setUser(currentUser);
@@ -267,7 +300,6 @@
                 return () => unsubscribe();
             }, []);
 
-            // Data Sync
             useEffect(() => {
                 if (!user) return;
                 const docRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('menu');
@@ -297,7 +329,11 @@
                 const provider = new firebase.auth.GoogleAuthProvider();
                 try { await auth.signInWithPopup(provider); } catch (error) { alert("Login failed: " + error.message); }
             };
-            const logout = () => auth.signOut();
+            
+            const handleLogout = () => {
+                setIsProfileMenuOpen(false);
+                auth.signOut();
+            }
 
             const handleAddItem = (e) => {
                 e.preventDefault();
@@ -305,7 +341,7 @@
                 const item = { id: Date.now(), text: newItem, icon: '✨', duration: newDuration };
                 saveMenu({ ...menu, [activeCategory]: [...menu[activeCategory], item] });
                 setNewItem('');
-                setNewDuration('15m'); // Reset
+                setNewDuration('15m');
             };
 
             const handleDelete = (id) => {
@@ -316,7 +352,7 @@
             const pickRandom = () => {
                 setIsSpinning(true);
                 setRandomPick(null);
-                setShowTimer(false); // Reset timer visibility
+                setShowTimer(false);
                 let count = 0;
                 const items = menu[activeCategory];
                 if (items.length === 0) { setIsSpinning(false); return; }
@@ -341,7 +377,6 @@
                 setEditingItem(null);
             };
 
-            // NEW: Handle Time Editing
             const handleEditTime = (item) => {
                 const newTime = prompt("Edit Duration (e.g., 5m, 1h, 30s):", item.duration || "15m");
                 if (newTime !== null && newTime.trim() !== "") {
@@ -374,7 +409,25 @@
                             <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-full ${status === 'saved' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-600'}`}>
                                 {status === 'saved' ? 'SYNCED' : status}
                             </span>
-                            <img src={user.photoURL} className="w-8 h-8 rounded-full border border-gray-200 dark:border-slate-600 cursor-pointer" onClick={logout} title="Click to logout" />
+                            
+                            {/* NEW: Profile Dropdown */}
+                            <div className="relative">
+                                <img 
+                                    src={user.photoURL} 
+                                    className="w-8 h-8 rounded-full border border-gray-200 dark:border-slate-600 cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all" 
+                                    onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)} 
+                                    title="Menu" 
+                                />
+                                
+                                {isProfileMenuOpen && (
+                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                                        <button onClick={() => { setShowHelp(true); setIsProfileMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-2 text-sm font-medium">❓ Help</button>
+                                        <button onClick={() => { setShowAbout(true); setIsProfileMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-2 text-sm font-medium">ℹ️ About</button>
+                                        <div className="my-1 border-t border-slate-100 dark:border-slate-700"></div>
+                                        <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 flex items-center gap-2 text-sm font-medium">🚪 Logout</button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -491,6 +544,8 @@
                     </div>
 
                     <EmojiPicker isOpen={isEmojiPickerOpen} onClose={() => setIsEmojiPickerOpen(false)} onSelect={handleEmojiSelect} />
+                    {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+                    {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
                 </div>
             );
         };
