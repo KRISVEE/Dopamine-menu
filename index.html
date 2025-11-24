@@ -57,11 +57,24 @@
 
         const { useState, useEffect, useRef } = React;
 
-        // --- AUDIO ENGINE (Synthesizer - No external files needed) ---
+        // --- AUDIO ENGINE (Robust) ---
+        // We create the context lazily to handle browser autoplay policies
+        let audioCtx = null;
+
+        const initAudio = () => {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        };
+
         const playSound = (type) => {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
-            const ctx = new AudioContext();
+            const ctx = initAudio();
+            if (!ctx) return;
+
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.connect(gain);
@@ -127,7 +140,9 @@
         };
 
         const FocusTimer = ({ durationMinutes, onClose }) => {
-            const [timeLeft, setTimeLeft] = useState(durationMinutes * 60);
+            // Safe parse duration, default to 15 if parse fails
+            const initialMinutes = parseInt(durationMinutes) || 15;
+            const [timeLeft, setTimeLeft] = useState(initialMinutes * 60);
             const [isActive, setIsActive] = useState(false);
 
             useEffect(() => {
@@ -160,7 +175,7 @@
                         <button onClick={() => setIsActive(!isActive)} className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors ${isActive ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
                             {isActive ? 'Pause' : 'Start Focus'}
                         </button>
-                        <button onClick={() => { setIsActive(false); setTimeLeft(durationMinutes * 60); }} className="px-4 py-2 bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-200 rounded-xl font-bold text-sm hover:bg-slate-300 dark:hover:bg-slate-500">
+                        <button onClick={() => { setIsActive(false); setTimeLeft(initialMinutes * 60); }} className="px-4 py-2 bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-200 rounded-xl font-bold text-sm hover:bg-slate-300 dark:hover:bg-slate-500">
                             Reset
                         </button>
                     </div>
@@ -212,6 +227,21 @@
             const [editingItem, setEditingItem] = useState(null);
             const [showTimer, setShowTimer] = useState(false);
             const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('dopamine_dark_mode') === 'true');
+
+            // 1. ONE-TIME AUDIO UNLOCK
+            useEffect(() => {
+                const unlockAudio = () => {
+                    initAudio();
+                    document.removeEventListener('click', unlockAudio);
+                    document.removeEventListener('touchstart', unlockAudio);
+                };
+                document.addEventListener('click', unlockAudio);
+                document.addEventListener('touchstart', unlockAudio);
+                return () => {
+                    document.removeEventListener('click', unlockAudio);
+                    document.removeEventListener('touchstart', unlockAudio);
+                }
+            }, []);
 
             // Dark Mode Effect
             useEffect(() => {
@@ -275,8 +305,7 @@
                 const item = { id: Date.now(), text: newItem, icon: '✨', duration: newDuration };
                 saveMenu({ ...menu, [activeCategory]: [...menu[activeCategory], item] });
                 setNewItem('');
-                // Reset duration to default after add
-                setNewDuration('15m');
+                setNewDuration('15m'); // Reset
             };
 
             const handleDelete = (id) => {
@@ -293,12 +322,12 @@
                 if (items.length === 0) { setIsSpinning(false); return; }
                 const interval = setInterval(() => {
                     setRandomPick(items[Math.floor(Math.random() * items.length)]);
-                    playSound('tick'); // Sound Effect
+                    playSound('tick'); 
                     count++;
                     if (count > 10) { 
                         clearInterval(interval); 
                         setIsSpinning(false);
-                        playSound('win'); // Sound Effect
+                        playSound('win'); 
                     }
                 }, 100);
             };
@@ -310,6 +339,15 @@
                 saveMenu({ ...menu, [activeCategory]: updatedList });
                 setIsEmojiPickerOpen(false);
                 setEditingItem(null);
+            };
+
+            // NEW: Handle Time Editing
+            const handleEditTime = (item) => {
+                const newTime = prompt("Edit Duration (e.g., 5m, 1h, 30s):", item.duration || "15m");
+                if (newTime !== null && newTime.trim() !== "") {
+                    const updatedList = menu[activeCategory].map(i => i.id === item.id ? { ...i, duration: newTime.trim() } : i);
+                    saveMenu({ ...menu, [activeCategory]: updatedList });
+                }
             };
 
             const categories = {
@@ -330,7 +368,6 @@
                     <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 px-4 py-3 sticky top-0 z-20 flex justify-between items-center shadow-sm">
                         <h1 className="font-bold text-lg flex items-center gap-2">🧠 Dopamine Menu</h1>
                         <div className="flex items-center gap-3">
-                            {/* Dark Mode Toggle */}
                             <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:scale-105 transition-transform">
                                 {isDarkMode ? '☀️' : '🌙'}
                             </button>
@@ -379,7 +416,6 @@
                                         ⏱️ {randomPick.duration || '15m'}
                                     </div>
                                     
-                                    {/* Timer Button */}
                                     {!showTimer && (
                                         <div className="mt-2">
                                             <button onClick={() => setShowTimer(true)} className="bg-white text-indigo-600 px-6 py-2 rounded-full font-bold shadow-lg hover:scale-105 transition-transform text-sm">
@@ -388,7 +424,6 @@
                                         </div>
                                     )}
 
-                                    {/* The Actual Timer */}
                                     {showTimer && (
                                         <FocusTimer 
                                             durationMinutes={parseInt(randomPick.duration) || 15} 
@@ -411,10 +446,14 @@
                                                 </button>
                                                 <div className="flex flex-col">
                                                     <span className="font-medium text-slate-700 dark:text-slate-200">{item.text}</span>
-                                                    {/* Time Tag Badge */}
-                                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900/50 px-1.5 py-0.5 rounded w-fit mt-0.5">
+                                                    {/* Editable Time Tag */}
+                                                    <button 
+                                                        onClick={() => handleEditTime(item)}
+                                                        className="text-[10px] text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900/50 px-1.5 py-0.5 rounded w-fit mt-0.5 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-left"
+                                                        title="Click to edit duration"
+                                                    >
                                                         ⏱️ {item.duration || '15m'}
-                                                    </span>
+                                                    </button>
                                                 </div>
                                             </div>
                                             <button onClick={() => handleDelete(item.id)} className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-3 text-slate-300 hover:text-red-500 active:text-red-600 transition-all">
@@ -425,18 +464,26 @@
                                 )}
                             </div>
 
-                            {/* Add Item with Duration */}
+                            {/* Add Item with Custom Duration */}
                             <form onSubmit={handleAddItem} className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 flex gap-2">
                                 <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder={`Add to ${categories[activeCategory].title}...`} className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" />
                                 
-                                {/* Duration Select */}
-                                <select 
-                                    value={newDuration} 
-                                    onChange={(e) => setNewDuration(e.target.value)}
-                                    className="px-2 py-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                                >
-                                    {durationOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
+                                {/* Custom Duration Input */}
+                                <div className="relative w-24">
+                                    <input 
+                                        list="durations"
+                                        value={newDuration} 
+                                        onChange={(e) => setNewDuration(e.target.value)}
+                                        className="w-full px-2 py-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
+                                        placeholder="Time"
+                                    />
+                                    <datalist id="durations">
+                                        <option value="5m" />
+                                        <option value="15m" />
+                                        <option value="30m" />
+                                        <option value="1h" />
+                                    </datalist>
+                                </div>
 
                                 <button type="submit" className="w-12 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center text-xl">+</button>
                             </form>
