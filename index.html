@@ -137,7 +137,7 @@
             );
         };
 
-        // NEW: Help Modal Component
+        // NEW: Help Modal Component (UPDATED)
         const HelpModal = ({ onClose }) => (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-xl max-w-sm w-full animate-in zoom-in-95 duration-200 relative" onClick={e => e.stopPropagation()}>
@@ -148,8 +148,15 @@
                         <p><span className="font-bold text-emerald-600 dark:text-emerald-400">🍽️ Entrées:</span> Deep focus work (30m+).</p>
                         <p><span className="font-bold text-sky-600 dark:text-sky-400">🥗 Sides:</span> Boring chores made fun (add music!).</p>
                         <p><span className="font-bold text-rose-600 dark:text-rose-400">🍰 Desserts:</span> Rewards & treats. Use sparingly!</p>
-                        <hr className="border-slate-100 dark:border-slate-700 my-2"/>
-                        <p>💡 <span className="font-bold">Tip:</span> Tap the time badge (e.g. "15m") to edit task duration.</p>
+                        
+                        <div className="my-3 border-t border-slate-100 dark:border-slate-700"></div>
+                        
+                        <h3 className="font-bold text-slate-800 dark:text-white mb-1">💡 Pro Tips:</h3>
+                        <ul className="list-disc list-inside space-y-1 pl-1">
+                            <li>Tap any <span className="font-bold">Emoji Icon</span> to customize it.</li>
+                            <li>Tap the <span className="font-bold">Time Badge</span> (e.g. "15m") to edit duration.</li>
+                            <li>Use <span className="font-bold">"Pick One"</span> to get a random task & start a Focus Timer!</li>
+                        </ul>
                     </div>
                 </div>
             </div>
