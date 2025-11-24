@@ -465,17 +465,17 @@
                             </div>
 
                             {/* Add Item with Custom Duration */}
-                            <form onSubmit={handleAddItem} className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 flex gap-2">
-                                <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder={`Add to ${categories[activeCategory].title}...`} className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" />
+                            <form onSubmit={handleAddItem} className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 flex gap-2 items-center">
+                                <input value={newItem} onChange={e => setNewItem(e.target.value)} placeholder="Add item..." className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm" />
                                 
                                 {/* Custom Duration Input */}
-                                <div className="relative w-24">
+                                <div className="relative w-20 shrink-0">
                                     <input 
                                         list="durations"
                                         value={newDuration} 
                                         onChange={(e) => setNewDuration(e.target.value)}
-                                        className="w-full px-2 py-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
-                                        placeholder="Time"
+                                        className="w-full px-1 py-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
+                                        placeholder="15m"
                                     />
                                     <datalist id="durations">
                                         <option value="5m" />
@@ -485,7 +485,7 @@
                                     </datalist>
                                 </div>
 
-                                <button type="submit" className="w-12 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center text-xl">+</button>
+                                <button type="submit" className="w-12 h-12 shrink-0 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center text-2xl pb-1">+</button>
                             </form>
                         </div>
                     </div>
